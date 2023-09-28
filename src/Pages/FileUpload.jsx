@@ -1,36 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { ref, uploadBytesResumable, getDownloadURL, listAll, deleteObject } from "firebase/storage";
-import storage from "../utils/firebase";
+import React, { useState } from "react";
+import {
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+
+} from "firebase/storage";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
+
+import { storage, db } from "../utils/firebase";
+import Blogs from "./Blogs";
+import { useNavigate } from "react-router-dom";
 
 function FileUpload() {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [fileList, setFileList] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(0);
-
-  useEffect(() => {
-    const listRef = ref(storage, 'files/');
-
-    // Find all the prefixes and items.
-    listAll(listRef)
-      .then((res) => {
-        const files = [];
-        res.items.forEach((itemRef) => {
-          files.push(itemRef);
-        });
-        setFileList(files);
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }, []);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
 
   const handleFileChange = (e) => {
     setSelectedFile(e.target.files[0]);
   };
 
+  const navigate=useNavigate()
   const handleUpload = () => {
     if (selectedFile) {
-      console.log("Uploading:", selectedFile);
       const storageRef = ref(storage, "files/" + selectedFile?.name);
       const uploadTask = uploadBytesResumable(storageRef, selectedFile);
 
@@ -39,23 +34,8 @@ function FileUpload() {
         (snapshot) => {
           const progress =
             (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log("Upload is " + progress + "% done");
           setUploadProgress(progress);
 
-          if (progress === 100) {
-            // Refresh the page when upload is complete
-            window.location.reload();
-          }
-
-          switch (snapshot.state) {
-            case "paused":
-              console.log("Upload is paused");
-              break;
-            case "running":
-              console.log("Upload is running");
-              break;
-          }
-          setSelectedFile(null);
         },
         (error) => {
           console.log(error);
@@ -63,14 +43,75 @@ function FileUpload() {
         () => {
           getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
             console.log("File available at", downloadURL);
+            const articleRef = collection(db, "Blog");
+            console.log("Adding document to Firestore:", articleRef.path);
+
+            addDoc(articleRef, {
+              fileName: selectedFile.name,
+              title: title,
+              description: description,
+              downloadURL: downloadURL,
+              createdAt: Timestamp.now().toDate(),
+            })
+              .then(() => {
+                setDescription("");
+
+                setTitle("");
+                setUploadProgress(0);
+                setSelectedFile(null);
+
+                 // Reset file input
+        const fileInput = document.getElementById("file");
+        if (fileInput) {
+          fileInput.value = "";
+        }
+
+                toast.success("File uploaded successfully", {
+                  position: "top-center",
+                  autoClose: 1000,
+                  hideProgressBar: true,
+                  closeOnClick: true,
+                  pauseOnHover: false,
+                  draggable: false,
+                  progress: undefined,
+                  theme: "light",
+                });
+              })
+              .catch((err) => {
+                toast("Error adding article", { type: "error" });
+              });
           });
         }
       );
     }
   };
+ 
+  
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value);
+  };
+
+  const handleDescriptionChange = (e) => {
+    setDescription(e.target.value);
+  };
+  const handleSignOut =  () => {
+    localStorage.setItem("login", false);
+    navigate('/signin')
+
+
+    
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <ToastContainer />
+      <button
+  onClick={handleSignOut}
+  className="bg-red-500 text-white font-semibold py-2 px-4 rounded hover:bg-red-600 ml-auto mt-4 mr-4"
+>
+  Sign Out
+</button>
+
       <h1 className="text-3xl font-semibold text-center py-4">
         Welcome To FileSafe
       </h1>
@@ -80,7 +121,7 @@ function FileUpload() {
           <div className="bg-white shadow-md rounded-lg overflow-hidden">
             <div className="p-4">
               <h2 className="text-2xl font-semibold mb-4">Upload Files</h2>
-              
+
               <input
                 type="file"
                 id="file"
@@ -88,8 +129,40 @@ function FileUpload() {
                 className="mb-4"
                 accept=".jpg, .jpeg, .png, .gif, .pdf, .doc, .docx, .xls, .xlsx, .txt, .mp4, .avi, .mov"
                 onChange={handleFileChange}
-                multiple
               />
+              <div className="mb-4">
+                <label
+                  htmlFor="title"
+                  className="block text-gray-600 text-sm mb-2"
+                >
+                  Title
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  className="border border-gray-300 rounded px-3 py-2 w-full"
+                  placeholder="Enter file title"
+                  value={title}
+                  onChange={handleTitleChange}
+                />
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="description"
+                  className="block text-gray-600 text-sm mb-2"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  className="border border-gray-300 rounded px-3 py-2 w-full"
+                  placeholder="Enter file description"
+                  value={description}
+                  onChange={handleDescriptionChange}
+                />
+              </div>
               <button
                 onClick={handleUpload}
                 className="bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600"
@@ -109,53 +182,7 @@ function FileUpload() {
               )}
             </div>
           </div>
-          <div className="mt-6 bg-white shadow-md rounded-lg overflow-hidden">
-            <div className="p-4">
-              <h2 className="text-2xl font-semibold mb-4">File List</h2>
-              <ul>
-                {fileList.map((file, index) => (
-                  <li key={index} className="py-2 border-b">
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg">{file.name}</span>
-                      <div>
-                        <a
-                          href="#"
-                          onClick={() => {
-                            getDownloadURL(file).then((downloadURL) => {
-                              window.open(downloadURL);
-                            });
-                          }}
-                          className="text-blue-500 hover:underline mr-4"
-                        >
-                          Download
-                        </a>
-                        <button
-                          onClick={() => {
-                            const desertRef = ref(storage, `files/${file.name}`);
-                            deleteObject(desertRef)
-                              .then(() => {
-                                alert(`${file.name} Deleted Successfully`);
-                                // Update the file list after deletion
-                                const updatedList = fileList.filter(
-                                  (item) => item.name !== file.name
-                                );
-                                setFileList(updatedList);
-                              })
-                              .catch((error) => {
-                                alert(`Error occurred: ${error}`);
-                              });
-                          }}
-                          className="text-red-500 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <Blogs />
         </div>
       </div>
     </div>
