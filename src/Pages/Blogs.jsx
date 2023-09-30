@@ -61,9 +61,7 @@ const Blogs = () => {
   return (
     <div className="container mx-auto my-8">
       <h2 className="text-3xl font-bold mb-4 text-center">Your Data</h2>
-      {articles.length === 0 ? (
-        <p className="text-center text-xl">No articles found!</p>
-      ) : (
+      {
         articles.map(
           ({ id, title, description, fileName, createdAt, downloadURL }) => (
             <div
@@ -105,7 +103,7 @@ const Blogs = () => {
             </div>
           )
         )
-      )}
+      }
     </div>
   );
 };

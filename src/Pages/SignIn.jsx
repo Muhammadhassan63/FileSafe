@@ -1,6 +1,9 @@
 // SignIn.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { sha512 } from "js-sha512";
+import { username,userpassword } from "../credentials/credential";
+
 
 function SignIn() {
   const [name, setName] = useState("");
@@ -9,11 +12,12 @@ function SignIn() {
 
   const handleSignIn = (e) => {
     e.preventDefault();
+    const hashedName = sha512(name);
+    const hashedPassword = sha512(password);
 
-    if (name === "hassan" && password === "filesafe123") {
-      let login = localStorage.setItem("login", true);
 
-     
+    if (hashedName === username && hashedPassword === userpassword) {
+     localStorage.setItem("login", true);
         navigate("/dashboard");
    
     } else {
