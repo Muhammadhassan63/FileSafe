@@ -6,7 +6,6 @@ import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { storage, db } from "../utils/firebase";
 import Blogs from "./Blogs";
 import { useNavigate } from "react-router-dom";
-import Article from "./Article";
 
 function FileUpload() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -234,7 +233,7 @@ function FileUpload() {
             </div>
           </div>
           <Blogs />
-          <Article/>
+       
         </div>
       </div>
     </div>
